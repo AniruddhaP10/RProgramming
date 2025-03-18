@@ -1,0 +1,175 @@
+---
+title: "Individual Assignment 1"
+author: "Aniruddha Panchwagh- 24230935"
+format: 
+  html: 
+    embed-resources: true
+    toc: true
+    theme: flatly
+    toc-depth: 2
+    toc-title: "Contents"
+    toc-location: left
+    code-fold: true
+
+---
+
+## Overview
+```{mermaid}
+graph LR;
+  A[Dataset Acquisition] --> B[Data Preprocessing]
+  B --> C[Exploratory Data Analysis]
+  C --> D[Feature Selection]
+  D --> E[Analysis of Attack Types]
+  E --> F[Pattern Detection]
+  F --> G[Create Visualizations]
+  G --> H[Conclusions]
+ 
+```
+
+
+
+## Introduction
+
+This assignment focuses on analyzing a cyber security attacks data set to explore and visualize the types and frequencies of attacks. The purpose of our data cleaning process involves discovering patterns and trends in how attackers behave. This study groups attack types properly to display results using interactive graphs which demonstrate what cyber security threats occur frequently.
+
+## Understanding the Dataset
+
+The following dataset on cyber security has been sourced from Kaggle. It comprises 40,000 records and includes 25 diverse metrics related to cyber security incidents.
+
+Data set link: [Kaggle-CyberSecurityDataset](https://www.kaggle.com/datasets/teamincribo/cyber-security-attacks)
+
+
+
+##  Load necessary libraries
+
+```{r setup ,message=FALSE,warning=FALSE}
+
+library(tidyverse)
+library(dplyr)
+library(plotly)
+library(formattable)
+library(RColorBrewer)
+```
+
+## Read dataset and display dataset
+```{r}
+
+cybersecurity_attacks <- read.csv("E:/coding/R_Programing/Indivdual_assignment1/Indivdual_assignment1/Dataset/cybersecurity_attacks.csv")
+
+
+sample_data <- sample_n(cybersecurity_attacks,40000)
+
+
+colnames(sample_data)
+```
+
+## Select, Rename and view specific columns (without quotes)
+```{r}
+
+
+selected_Coloumn <- sample_data %>%
+  select(Source.IP.Address, Destination.IP.Address, Attack.Type, Malware.Indicators, Severity.Level, Log.Source, Action.Taken, Traffic.Type, Protocol, Packet.Type)
+
+
+selected_Coloumn <- selected_Coloumn %>%
+  rename(
+    Source_IP_Address = Source.IP.Address,
+    Destination_IP_Address = Destination.IP.Address,
+    Malware_Indicators = Malware.Indicators,
+    Attack_type = Attack.Type,
+    Severity_Level = Severity.Level,
+    Log_Source = Log.Source,
+    Action_Taken = Action.Taken,
+    Traffic_Type = Traffic.Type,
+    Protocol = Protocol,
+    Packet_Type = Packet.Type
+  )
+
+
+selected_Coloumn <- selected_Coloumn %>%
+  drop_na(Source_IP_Address, Destination_IP_Address, Attack_type, Malware_Indicators, Severity_Level, Log_Source, Action_Taken, Traffic_Type, Protocol, Packet_Type)
+
+
+
+selected_Coloumn <- as.data.frame(selected_Coloumn)
+
+formattable(head(selected_Coloumn, 10))
+
+```
+
+## Count occurrences of each attack type
+```{r}
+
+
+attack_counts <- selected_Coloumn %>%
+  group_by(Attack_type) %>%
+  summarise(count = n())
+print(attack_counts)
+
+
+
+fig <- plot_ly(
+  attack_counts, 
+  x = ~Attack_type,  
+  y = ~count, 
+  type = 'bar',
+  marker = list(color = '#33FF57')
+) %>%
+  layout(title = "Frequency of Attack Types", 
+         xaxis = list(title = "Attack Type"), 
+         yaxis = list(title = "Count"))
+
+fig
+```
+
+```{r}
+library(tidyverse)
+library(plotly)
+
+
+attack_counts <- selected_Coloumn %>%
+  group_by(Attack_type) %>%
+  summarise(count = n()) %>%
+  arrange(Attack_type)
+
+
+line_chart_attack_type <- plot_ly(attack_counts, 
+                                  x = ~Attack_type, 
+                                  y = ~count, 
+                                  type = 'scatter', 
+                                  mode = 'lines+markers', 
+                                  line = list(width = 2)) %>%
+  layout(title = "Attack Types Frequency",
+         xaxis = list(title = "Attack Type"),
+         yaxis = list(title = "Count of Attacks"),
+         showlegend = FALSE)
+
+
+line_chart_attack_type
+
+```
+## Pie Chart of Attack Types
+```{r}
+
+traffic_counts <- selected_Coloumn %>%
+  group_by(Traffic_Type) %>%
+  summarise(count = n())
+
+
+plot_ly(traffic_counts, 
+        labels = ~Traffic_Type, 
+        values = ~count,         
+        type = 'pie',           
+        textinfo = 'label+percent',  
+        marker = list(colors = RColorBrewer::brewer.pal(8, "Set3")),  
+        hoverinfo = 'label+percent+value') %>%
+  layout(title = "Distribution of Traffic Types")
+
+
+```
+
+
+
+
+## Conclusion
+This assignment analyzed a cybersecurity attacks dataset to explore and visualize different attack types.  The full data cleaning process gave us the ability to create both bar charts and pie charts which displayed the attack type frequencies. The analysis showed that DDoS and Intrusion attacks were the most prevalent while giving details about malware indicators. The analytical results contain information that produces important benefits for enhancing cybersecurity methods. Moving forward, advanced techniques like anomaly detection can be applied for deeper insights into attack patterns.
