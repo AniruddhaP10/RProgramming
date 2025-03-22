@@ -1,0 +1,200 @@
+---
+title: "Individual Assignment 2"
+author: "Aniruddha Panchwagh- 24230935"
+format: 
+  html: 
+    embed-resources: true
+    toc: true
+    theme: flatly
+    toc-depth: 2
+    toc-title: "Contents"
+    toc-location: left
+    code-fold: true
+
+---
+
+## Overview
+```{mermaid}
+graph LR;
+  A[Dataset Acquisition] --> B[Data Preprocessing]
+  B --> C[Exploratory Data Analysis]
+  C --> D[Feature Selection]
+  D --> E[Analysis of Attack Types]
+  E --> F[Pattern Detection]
+  F --> G[Create Visualizations]
+  G --> H[Conclusions]
+ 
+```
+
+
+
+## Introduction
+
+This assignment focuses on analyzing a cyber security attacks data set to explore and visualize the types and frequencies of attacks. The purpose of our data cleaning process involves discovering patterns and trends in how attackers behave. This study groups attack types properly to display results using interactive graphs which demonstrate what cyber security threats occur frequently.
+
+## Understanding the Dataset
+
+The following dataset on cyber security has been sourced from Kaggle. It comprises 40,000 records and includes 25 diverse metrics related to cyber security incidents.
+
+Data set link: [Kaggle-CyberSecurityDataset](https://www.kaggle.com/datasets/teamincribo/cyber-security-attacks)
+
+
+
+##  Load necessary libraries
+
+```{r setup ,message=FALSE,warning=FALSE}
+
+library(tidyverse)
+library(dplyr)
+library(plotly)
+library(formattable)
+library(RColorBrewer)
+library(ggplot2)
+```
+
+## Read dataset and display dataset
+```{r}
+
+cybersecurity_attacks <- read.csv("/Users/meghadeshmukh/Desktop/R_Assignment/Ani/cybersecurity_attacks.csv")
+global_cyber_threat <- read.csv("/Users/meghadeshmukh/Desktop/R_Assignment/Ani/Global_Cybersecurity_Threats_2015-2024.csv")
+data_breach <- read.csv("/Users/meghadeshmukh/Desktop/R_Assignment/Ani/Data_Breach_Notifications_Affecting_Washington_Residents.csv")
+
+```
+
+## Select, Rename and view specific columns (without quotes)
+```{r}
+
+# selected only neccasary columns from all the datasets
+selected_col_cybersec_attacks <- cybersecurity_attacks %>%
+  select(Source.IP.Address, Destination.IP.Address, Attack.Type, Malware.Indicators, Severity.Level, Log.Source, Action.Taken, Traffic.Type, Protocol, Packet.Type,Anomaly.Scores,Packet.Length)
+
+selected_col_data_breach <- data_breach %>%
+  select(CyberattackType,WashingtoniansAffected,IndustryType)
+
+selected_col_global_cyber_threat <- global_cyber_threat %>%
+  select(Attack.Type,Country,Target.Industry,Defense.Mechanism.Used,Number.of.Affected.Users,Security.Vulnerability.Type,Financial.Loss..in.Million...)
+       
+
+#remaned column names 
+selected_col_cybersec_attacks <- selected_col_cybersec_attacks %>%
+  rename(
+    Source_IP_Address = Source.IP.Address,
+    Destination_IP_Address = Destination.IP.Address,
+    Malware_Indicators = Malware.Indicators,
+    Attack_type = Attack.Type,
+    Severity_Level = Severity.Level,
+    Log_Source = Log.Source,
+    Action_Taken = Action.Taken,
+    Traffic_Type = Traffic.Type,
+    Protocol = Protocol,
+    Packet_Type = Packet.Type,
+    Anomaly_Scores=Anomaly.Scores,
+    Packet_Length=Packet.Length
+  )
+selected_col_global_cyber_threat <- selected_col_global_cyber_threat %>%
+  rename(
+    Attack_type=Attack.Type,
+    country=Country,
+    target_industry=Target.Industry,
+    mitigation_methods_used=Defense.Mechanism.Used,
+    affected_users=Number.of.Affected.Users,
+    vulnerability_type=Security.Vulnerability.Type,
+    financial_loss=Financial.Loss..in.Million...
+  )
+
+selected_col_data_breach <- selected_col_data_breach %>%
+  rename(
+    Attack_type=CyberattackType,
+    industry_type=IndustryType
+  )
+
+#dropped NA values from selected columns of datasets
+selected_col_cybersec_attacks <- selected_col_cybersec_attacks %>%
+  drop_na(Source_IP_Address, Destination_IP_Address, Attack_type, Malware_Indicators, Severity_Level, Log_Source, Action_Taken, Traffic_Type, Protocol, Packet_Type,Packet_Length)
+selected_col_global_cyber_threat <- selected_col_global_cyber_threat %>%
+  drop_na(Attack_type, target_industry, mitigation_methods_used,affected_users,vulnerability_type,financial_loss,country)
+selected_col_data_breach <- selected_col_data_breach %>%
+  drop_na(Attack_type,WashingtoniansAffected,industry_type)
+
+```
+
+## Count occurrences of each attack type
+```{r group ,message=FALSE,warning=FALSE}
+
+#grouped data based on attack type and traffic type and counted packet lenght so that we can clearly understand which attack type have most traffic
+attack_counts <- selected_col_cybersec_attacks %>%
+  group_by(Attack_type,Traffic_Type) %>%
+  summarise(count = sum(Packet_Length))
+#print(attack_counts)
+
+plot_ly(attack_counts, 
+        x = ~Attack_type,           
+        y = ~count,            
+        color = ~Traffic_Type,          
+        type = 'bar', 
+        text = ~paste('Traffic Type', Traffic_Type),
+        hoverinfo = 'text') %>%
+  layout(title = "Frequency of Attack Types",
+         xaxis = list(title = "Attack Type "),
+         yaxis = list(title = "count of Packet lenght"))
+
+```
+# merging two datasets 
+```{r merge ,message=FALSE,warning=FALSE}
+# Ensure data is grouped by industry and attack type, then summarize
+dataset1_dataset2 <- selected_col_data_breach %>%
+  left_join(selected_col_cybersec_attacks, by = "Attack_type")
+
+data_grouped <- dataset1_dataset2 %>%
+  group_by(industry_type, Attack_type) %>%
+  summarise(total_affected = sum(WashingtoniansAffected, na.rm = TRUE), .groups = "drop")
+
+# Find the most impactful attack per industry
+top_attacks <- data_grouped %>%
+  group_by(industry_type) %>%
+  slice_max(order_by = total_affected, n = 1)  # Select the attack type with the highest impact per industry
+
+# Pie chart visualization
+plot_ly(top_attacks, 
+        labels = ~industry_type, 
+        values = ~total_affected, 
+        type = "pie", 
+        textinfo = "label+percent", 
+        hoverinfo = "label+value+percent",
+        marker = list(colorscale = 'Rainbow')) %>%
+  layout(title = "Most Impactful Attack Type per Industry (Total Affected Users)")
+
+```
+
+# merging buuble chart   
+```{r bubble ,message=FALSE,warning=FALSE}
+
+dataset1_dataset23 <- selected_col_global_cyber_threat %>%
+  left_join(selected_col_data_breach, by = "Attack_type")
+
+
+country_attack <- dataset1_dataset23 %>%
+  group_by(Attack_type, mitigation_methods_used) %>%
+  summarise(count = n())
+
+
+# A bubble graph was plotted using Plotly.
+plot_ly(country_attack,
+        x = ~mitigation_methods_used,
+        y = ~Attack_type,
+        size = ~count,
+        color = ~Attack_type,
+        type = 'scatter',
+        mode = 'markers',
+        hoverinfo = 'text',
+        text = ~paste('Count of mitigation methods used based on attack type: ', count),
+        marker = list(sizemode = 'diameter', opacity = 0.5)) %>%
+  layout(title = "Attack Types by Country",
+         xaxis = list(title = "Mitigation methods used "),
+         yaxis = list(title = "Attack Type"))
+
+```
+
+
+## Conclusion
+This assignment analyzed a cybersecurity attacks dataset to explore and visualize different attack types.  The full data cleaning process gave us the ability to create both bar charts and pie charts which displayed the attack type frequencies. The analysis showed that DDoS and Intrusion attacks were the most prevalent while giving details about malware indicators. The analytical results contain information that produces important benefits for enhancing cybersecurity methods. Moving forward, advanced techniques like anomaly detection can be applied for deeper insights into attack patterns.
